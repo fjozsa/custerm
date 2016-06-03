@@ -57,7 +57,7 @@ int main(){
   short int r,g,b;
   for(int i = 0; i < 16; i++){
 
-    char dnum[2], snum[1];
+    char dnum[2], snum[2];
     char prefix[13] = "Urxvt.color";
     
     //set up color string and grab terminal values
