@@ -23,15 +23,27 @@ int hex2cursescolor(char * hex){
     return (num[0]*16*4)+(num[1]*4);
   }
 }
-    
-    
-int main(){
-  int line = -1;
-  initscr();
-  cbreak();
-  noecho();
-  start_color();
 
+void _printline(int line, short r, short g, short b){
+
+  if(line == 0){
+    printw(" *.background: #%02x%02x%02x\n",(int)(r*.255),(int)(g*.255),(int)(b*.255));
+  }
+  else if(line == 1){
+    printw(" *.foreground: #%02x%02x%02x\n",(int)(r*.255),(int)(g*.255),(int)(b*.255));
+  }
+  else{
+    if(line > 11){
+      printw(" *.color%d:    #%02x%02x%02x\n",line-2,(int)(r*.255),(int)(g*.255),(int)(b*.255));
+    }
+    else{
+      printw(" *.color%d:     #%02x%02x%02x\n",line-2,(int)(r*.255),(int)(g*.255),(int)(b*.255));
+    }
+  }
+}
+
+int _setup(){
+  short int r,g,b;
   XrmDatabase  db;   /* Xresources database */
   XrmValue   ret;  /* structure that holds pointer to string */
   Display   *dpy;  /* X connection */
@@ -51,38 +63,57 @@ int main(){
 
   if (db == NULL)
     return -3;
-  
 
 
-  short int r,g,b;
+  XrmGetResource(db,"*.background","String", &type, &ret);
+  init_color(0,hex2cursescolor(ret.addr+1),hex2cursescolor(ret.addr+3),hex2cursescolor(ret.addr+5));
+  color_content(0,&r,&g,&b);
+  init_pair(0,0,0); 
+  _printline(0,r,g,b);
+  XrmGetResource(db,"*.foreground","String", &type, &ret);
+  init_color(1,hex2cursescolor(ret.addr+1),hex2cursescolor(ret.addr+3),hex2cursescolor(ret.addr+5));
+  color_content(1,&r,&g,&b);
+  init_pair(1,1,0); 
+  _printline(1,r,g,b);
   for(int i = 0; i < 16; i++){
 
     char dnum[2], snum[1];
-    char prefix[13] = "Urxvt.color";
-    
+    char prefix[13] = "*.color";
+
     //set up color string and grab terminal values
     if(i < 10){
-    sprintf(snum,"%d",i);
-    strcat(prefix,snum);
-    XrmGetResource(db,prefix,"String", &type, &ret);
+      sprintf(snum,"%d",i);
+      strcat(prefix,snum);
+      XrmGetResource(db,prefix,"String", &type, &ret);
     }
     else{
-    sprintf(dnum,"%d",i);
-    strcat(prefix,dnum);
-    XrmGetResource(db,prefix,"String", &type, &ret);
+      sprintf(dnum,"%d",i);
+      strcat(prefix,dnum);
+      XrmGetResource(db,prefix,"String", &type, &ret);
     }
 
     char * col = ret.addr; 
-    init_color(i,hex2cursescolor(col+1),hex2cursescolor(col+3),hex2cursescolor(col+5));
-    color_content(i,&r,&g,&b);
-    init_pair(i,0,i); 
-    printw(" *.color%d: #%02x%02x%02x\n",i,(int)(r*.255),(int)(g*.255),(int)(b*.255));
+    init_color(i+2,hex2cursescolor(col+1),hex2cursescolor(col+3),hex2cursescolor(col+5));
+    color_content(i+2,&r,&g,&b);
+    init_pair(i+2,i+2,0); 
+    _printline(i+2,r,g,b);
   }
-  if(!can_change_color()){
-    endwin();
-    return 0;
-  }
+  return 0;
+}
 
+int main(){
+  int line, col;
+  line = col = 0;
+  initscr();
+  cbreak();
+  noecho();
+  start_color();
+
+  if(_setup()){
+    puts("Error on loading Xdb");
+    return -1;
+  }
+  short int r,g,b;
   mvchgat(0, 0, 11, A_NORMAL, 0, NULL);
   while(1){
     keypad(stdscr,TRUE);
@@ -91,79 +122,61 @@ int main(){
     switch(c){
 
       case KEY_UP:
-        if(line > 0){
-          mvchgat(line, 0, 11, A_NORMAL, 0, NULL);
+        color_content(line,&r,&g,&b);
+        if( line > 0 && col == 0){
+          mvchgat(line, 0, 15, A_NORMAL, 0, NULL);
           line--;
+        }
+        else{
+
+          if(col == 1){
+            r+=4;
+          }
+          else if(col == 2){
+            g+=4;
+          }
+          else{
+            b+=4;
+          }
+          init_color(line,r,g,b);
+          _printline(line,r,g,b);
         }
         break;
       case KEY_DOWN:
-        if(line < 15){
-          mvchgat(line, 0, 11, A_NORMAL, 0, NULL);
+        color_content(line,&r,&g,&b);
+        if(line < 17 && col == 0){
+          mvchgat(line, 0, 15, A_NORMAL, 0, NULL);
           line++;
+        }
+        else{
+
+          if(col == 1){
+            r-=4;
+          }
+          else if(col == 2){
+            g-=4;
+          }
+          else{
+            b-=4;
+          }
+          init_color(line,r,g,b);
+          _printline(line,r,g,b);
         }
         break;
 
-      case 'a':
-
-        color_content(line,&r,&g,&b);
-        r+=4;
-        if(r > 1024)
-          r-=4;
-        init_color(line,r,g,b);
-        printw(" *.color%d: #%02x%02x%02x\n",line,(int)(r*.255),(int)(g*.255),(int)(b*.255));
+      case KEY_RIGHT:
+        if(col < 4){
+          col++;
+        }
         break;
 
-      case 'z':
-
-        color_content(line,&r,&g,&b);
-        r-=4;
-        init_color(line,r,g,b);
-        printw(" *.color%d: #%02x%02x%02x\n",line,(int)(r*.255),(int)(g*.255),(int)(b*.255));
+      case KEY_LEFT:
+        if(col > 0){
+          col--;
+        }
         break;
-      
-      case 's':
-
-        color_content(line,&r,&g,&b);
-        g+=4;
-        if(g > 1000)
-          g-=4;
-        init_color(line,r,g,b);
-        printw(" *.color%d: #%02x%02x%02x\n",line,(int)(r*.255),(int)(g*.255),(int)(b*.255));
-        break;
-      
-      case 'x':
-
-        color_content(line,&r,&g,&b);
-        g-=4;
-        init_color(line,r,g,b);
-        printw(" *.color%d: #%02x%02x%02x\n",line,(int)(r*.255),(int)(g*.255),(int)(b*.255));
-        break;
-      
-      case 'd':
-
-        color_content(line,&r,&g,&b);
-        b+=4;
-        if(b > 1000)
-          b-=4;
-        init_color(line,r,g,b);
-
-        printw(" *.color%d: #%02x%02x%02x\n",line,(int)(r*.255),(int)(g*.255),(int)(b*.255));
-        break;
-      
-      case 'c':
-
-        color_content(line,&r,&g,&b);
-        b-=4;
-        init_color(line,r,g,b);
-        printw(" *.color%d: #%02x%02x%02x\n",line,(int)(r*.255),(int)(g*.255),(int)(b*.255));
-        break;
-
-      case 'q':
-        clear();
-        endwin();
-        return 0;
     }
-    mvchgat(line, 0, 11, COLOR_PAIR(line), line, NULL);
+    mvchgat(line, 0, 15, COLOR_PAIR(line), line, NULL);
   }
 
   endwin();
