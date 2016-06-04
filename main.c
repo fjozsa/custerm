@@ -135,11 +135,12 @@ int main(){
           else if(col == 2){
             g+=4;
           }
-          else{
+          else if(col == 3){
             b+=4;
           }
           init_color(line,r,g,b);
           _printline(line,r,g,b);
+          mvchgat(line,(col*2) + 14,2, A_BLINK,line,NULL);
         }
         break;
       case KEY_DOWN:
@@ -156,24 +157,38 @@ int main(){
           else if(col == 2){
             g-=4;
           }
-          else{
+          else if(col == 3){
             b-=4;
           }
           init_color(line,r,g,b);
           _printline(line,r,g,b);
+          mvchgat(line,(col*2) + 14,2, A_BLINK,line,NULL);
         }
         break;
 
       case KEY_RIGHT:
-        if(col < 4){
+        if(col < 3){
           col++;
+        mvchgat(line, 0, 45, A_NORMAL, 0, NULL);
+        mvchgat(line,(col*2) + 14,2, A_BLINK,line,NULL);
+
         }
+
         break;
 
       case KEY_LEFT:
         if(col > 0){
+
+          if(col<2){
+            col--;
+            mvchgat(line, 0, 45, A_NORMAL, 0, NULL);
+            break;
+          }
           col--;
+        mvchgat(line, 0, 45, A_NORMAL, 0, NULL);
+        mvchgat(line,(col*2) + 14,2, A_BLINK,line,NULL);
         }
+
         break;
     }
     mvchgat(line, 0, 15, COLOR_PAIR(line), line, NULL);
